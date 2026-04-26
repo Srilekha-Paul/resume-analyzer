@@ -24,7 +24,9 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
  
     // Dynamic import to avoid edge runtime issues
-    const pdfParse = (await import("pdf-parse")).default;
+    // const pdfParse = (await import("pdf-parse")).default;
+    // const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
+    const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
     const pdfData = await pdfParse(buffer);
     const resumeText = pdfData.text;
  
