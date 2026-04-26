@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
  
     // Gemini AI analysis
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
  
     const prompt = `You are an expert ATS resume reviewer and career coach. Analyze the following resume and return ONLY a valid JSON object with no markdown, no code blocks, just raw JSON.
  
