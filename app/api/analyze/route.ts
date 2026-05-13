@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+
 export async function POST(req: NextRequest) {
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const model = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+
+    if (!apiKey) {
+      return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });
+    }
+
     const formData = await req.formData();
-    const file = formData.get("resume") as File;
+    const file = formData.get("resume") as File | null;
 
     if (!file) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
@@ -20,32 +30,34 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{
+    const response = await fetch(`${GEMINI_API_BASE}/models/${model}:generateContent`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
             parts: [
               { inline_data: { mime_type: "application/pdf", data: base64 } },
               {
-                text: `Analyze this resume and return ONLY a raw JSON object with no markdown, no backticks, no explanation. Keys required:
+                text: `Analyze this resume and return ONLY a raw JSON object with no markdown, no backticks, and no explanation. Keys required:
 - scores: object with keys overall, impact, clarity, ats (each a number 0-100)
 - overall: string (2-3 sentence summary)
-- strengths: string (bullet points using • character)
-- improvements: string (bullet points using • character)
+- strengths: string (bullet points using - prefix)
+- improvements: string (bullet points using - prefix)
 - suggestions: string (numbered actionable tips)
-- jobTitles: array of 3 strings (best matching job titles for this resume)`
-              }
-            ]
-          }],
-          generationConfig: {
-            temperature: 0.4,
-          }
-        })
-      }
-    );
+- jobTitles: array of 3 strings (best matching job titles for this resume)`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.4,
+        },
+      }),
+    });
 
     const geminiData = await response.json();
 
@@ -53,13 +65,20 @@ export async function POST(req: NextRequest) {
       throw new Error(geminiData.error?.message || "Gemini API error");
     }
 
-    // ✅ This is the fixed line
-    const text = geminiData.candidates[0].content.parts[0].text;
+    const text = geminiData.candidates?.[0]?.content?.parts?.find(
+      (part: { text?: string }) => typeof part.text === "string"
+    )?.text;
+
+    if (!text) {
+      throw new Error("Gemini returned an empty response");
+    }
+
     const clean = text.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
 
     return NextResponse.json(parsed);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unexpected error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
