@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Results from "./components/Results";
 
 export default function Home() {
@@ -9,6 +9,24 @@ export default function Home() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [showKeyInput, setShowKeyInput] = useState(false);
+
+  useEffect(() => {
+    const savedKey = localStorage.getItem("gemini_api_key");
+    if (savedKey) {
+      setApiKey(savedKey);
+    }
+  }, []);
+
+  const handleApiKeyChange = (val: string) => {
+    setApiKey(val);
+    if (val) {
+      localStorage.setItem("gemini_api_key", val);
+    } else {
+      localStorage.removeItem("gemini_api_key");
+    }
+  };
 
   async function handleAnalyze() {
     if (!file) return;
@@ -20,13 +38,24 @@ export default function Home() {
       const formData = new FormData();
       formData.append("resume", file);
 
+      const headers: Record<string, string> = {};
+      if (apiKey.trim()) {
+        headers["x-gemini-api-key"] = apiKey.trim();
+      }
+
       const res = await fetch("/api/analyze", {
         method: "POST",
+        headers,
         body: formData,
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Something went wrong");
+      if (!res.ok) {
+        if (data.error && data.error.toLowerCase().includes("key")) {
+          setShowKeyInput(true);
+        }
+        throw new Error(data.error || "Something went wrong");
+      }
       setResult(data);
     } catch (err: any) {
       setError(err.message);
@@ -51,22 +80,56 @@ export default function Home() {
       }}
     >
       <div className="w-full max-w-2xl">
-
-        {/* Badge */}
-        <div className="flex justify-center mb-6">
+        {/* Top bar with API Key toggle */}
+        <div className="flex justify-between items-center mb-6">
           <span className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium text-blue-300 border border-blue-500/40 bg-blue-500/10">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block"></span>
             AI-Powered by Gemini
           </span>
+
+          <button
+            onClick={() => setShowKeyInput(!showKeyInput)}
+            className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 transition-all"
+          >
+            ⚙️ {apiKey ? "API Key Configured" : "Configure API Key"}
+          </button>
         </div>
+
+        {/* API Key Drawer/Input */}
+        {showKeyInput && (
+          <div className="mb-6 p-4 rounded-xl bg-slate-900/80 border border-blue-500/30 text-sm space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="font-semibold text-white text-xs uppercase tracking-wider">
+                Gemini API Key
+              </label>
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-blue-400 hover:underline"
+              >
+                Get free key from Google AI Studio →
+              </a>
+            </div>
+            <input
+              type="password"
+              placeholder="Paste your GEMINI_API_KEY here..."
+              value={apiKey}
+              onChange={(e) => handleApiKeyChange(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500"
+            />
+            <p className="text-xs text-gray-400">
+              Optional if <code className="bg-white/10 px-1 py-0.5 rounded text-blue-300">GEMINI_API_KEY</code> is set in server <code className="bg-white/10 px-1 py-0.5 rounded text-blue-300">.env.local</code>. Your custom key stays stored in your browser local storage.
+            </p>
+          </div>
+        )}
 
         {/* Header */}
         <div className="text-center mb-10">
           <h1 className="text-5xl font-bold text-white leading-tight">
             Resume Analyzer
           </h1>
-          <h2 className="text-5xl font-bold leading-tight mt-1"
-            style={{ color: "#38bdf8" }}>
+          <h2 className="text-5xl font-bold leading-tight mt-1" style={{ color: "#38bdf8" }}>
             &amp; Job Matcher
           </h2>
           <p className="text-gray-400 mt-4 text-base max-w-md mx-auto">
@@ -76,7 +139,10 @@ export default function Home() {
 
         {/* Upload Zone */}
         <label
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
           className="flex flex-col items-center justify-center rounded-2xl p-14 cursor-pointer transition-all"
@@ -94,16 +160,31 @@ export default function Home() {
           }}
         >
           {/* Icon */}
-          <div className="mb-4 p-4 rounded-full"
-            style={{ background: "rgba(255,255,255,0.07)" }}>
+          <div className="mb-4 p-4 rounded-full" style={{ background: "rgba(255,255,255,0.07)" }}>
             {file ? (
-              <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: "#22c55e" }}>
+              <svg
+                className="w-8 h-8 text-green-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                style={{ color: "#22c55e" }}
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             ) : (
-              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: "#94a3b8" }}>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <svg
+                className="w-8 h-8"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                style={{ color: "#94a3b8" }}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
             )}
           </div>
@@ -112,9 +193,7 @@ export default function Home() {
             {file ? file.name : "Drop your resume here"}
           </span>
           <span className="text-sm mt-1" style={{ color: "#64748b" }}>
-            {file
-              ? `${(file.size / 1024).toFixed(1)} KB — click to change`
-              : "PDF files only · Max 5MB"}
+            {file ? `${(file.size / 1024).toFixed(1)} KB — click to change` : "PDF files only · Max 5MB"}
           </span>
 
           <input
@@ -138,9 +217,10 @@ export default function Home() {
           disabled={!file || loading}
           className="w-full mt-4 py-4 rounded-xl font-semibold text-white text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           style={{
-            background: loading || !file
-              ? "rgba(59,130,246,0.5)"
-              : "linear-gradient(90deg, #2563eb, #3b82f6)",
+            background:
+              loading || !file
+                ? "rgba(59,130,246,0.5)"
+                : "linear-gradient(90deg, #2563eb, #3b82f6)",
             boxShadow: file && !loading ? "0 0 24px rgba(59,130,246,0.4)" : "none",
           }}
         >
@@ -169,15 +249,21 @@ export default function Home() {
 
         {/* Error */}
         {error && (
-          <div className="mt-6 p-4 rounded-xl text-sm text-red-400"
-            style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}>
-            ⚠️ {error}
+          <div
+            className="mt-6 p-4 rounded-xl text-sm text-red-400 flex flex-col gap-2"
+            style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}
+          >
+            <div>⚠️ {error}</div>
+            {(error.toLowerCase().includes("key") || error.toLowerCase().includes("missing")) && (
+              <div className="text-xs text-gray-300 pt-1 border-t border-red-500/20">
+                👉 Click <button onClick={() => setShowKeyInput(true)} className="text-blue-400 underline font-semibold">Configure API Key</button> above to input your Gemini API Key, or set <code className="bg-black/40 px-1 py-0.5 rounded text-blue-300">GEMINI_API_KEY</code> in <code className="bg-black/40 px-1 py-0.5 rounded text-blue-300">.env.local</code>.
+              </div>
+            )}
           </div>
         )}
 
         {/* Results */}
         {result && <Results data={result} />}
-
       </div>
     </main>
   );
