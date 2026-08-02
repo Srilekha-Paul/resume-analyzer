@@ -80,49 +80,13 @@ export default function Home() {
       }}
     >
       <div className="w-full max-w-2xl">
-        {/* Top bar with API Key toggle */}
-        <div className="flex justify-between items-center mb-6">
+        {/* Centered AI-Powered by Gemini Badge */}
+        <div className="flex justify-center mb-6">
           <span className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium text-blue-300 border border-blue-500/40 bg-blue-500/10">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block"></span>
             AI-Powered by Gemini
           </span>
-
-          <button
-            onClick={() => setShowKeyInput(!showKeyInput)}
-            className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 transition-all"
-          >
-            ⚙️ {apiKey ? "API Key Configured" : "Configure API Key"}
-          </button>
         </div>
-
-        {/* API Key Drawer/Input */}
-        {showKeyInput && (
-          <div className="mb-6 p-4 rounded-xl bg-slate-900/80 border border-blue-500/30 text-sm space-y-3">
-            <div className="flex justify-between items-center">
-              <label className="font-semibold text-white text-xs uppercase tracking-wider">
-                Gemini API Key
-              </label>
-              <a
-                href="https://aistudio.google.com/app/apikey"
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-blue-400 hover:underline"
-              >
-                Get free key from Google AI Studio →
-              </a>
-            </div>
-            <input
-              type="password"
-              placeholder="Paste your GEMINI_API_KEY here..."
-              value={apiKey}
-              onChange={(e) => handleApiKeyChange(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500"
-            />
-            <p className="text-xs text-gray-400">
-              Optional if <code className="bg-white/10 px-1 py-0.5 rounded text-blue-300">GEMINI_API_KEY</code> is set in server <code className="bg-white/10 px-1 py-0.5 rounded text-blue-300">.env.local</code>. Your custom key stays stored in your browser local storage.
-            </p>
-          </div>
-        )}
 
         {/* Header */}
         <div className="text-center mb-10">
@@ -250,15 +214,10 @@ export default function Home() {
         {/* Error */}
         {error && (
           <div
-            className="mt-6 p-4 rounded-xl text-sm text-red-400 flex flex-col gap-2"
+            className="mt-6 p-4 rounded-xl text-sm text-red-400"
             style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}
           >
-            <div>⚠️ {error}</div>
-            {(error.toLowerCase().includes("key") || error.toLowerCase().includes("missing")) && (
-              <div className="text-xs text-gray-300 pt-1 border-t border-red-500/20">
-                👉 Click <button onClick={() => setShowKeyInput(true)} className="text-blue-400 underline font-semibold">Configure API Key</button> above to input your Gemini API Key, or set <code className="bg-black/40 px-1 py-0.5 rounded text-blue-300">GEMINI_API_KEY</code> in <code className="bg-black/40 px-1 py-0.5 rounded text-blue-300">.env.local</code>.
-              </div>
-            )}
+            ⚠️ {error}
           </div>
         )}
 

@@ -98,39 +98,33 @@ export async function POST(req: NextRequest) {
           if (!response.ok) {
             const errMsg = geminiData.error?.message || "Gemini API error";
 
-            // High demand (503 / 429 temporary spike) -> retry
             if (response.status === 503 || errMsg.toLowerCase().includes("demand") || errMsg.toLowerCase().includes("overloaded")) {
-              lastError = errMsg;
+              lastError = "Temporary high demand on Gemini API. Retrying...";
               continue; // try next attempt or fallback model
             }
 
-            if (response.status === 400 && errMsg.includes("API key")) {
-              throw new Error("Invalid Gemini API Key format or key expired. Please verify your key at https://aistudio.google.com/app/apikey.");
-            } else if (response.status === 429 && errMsg.includes("limit: 0")) {
-              throw new Error("Quota limit 0 for this key on this model. Please use a free API Key starting with 'AIzaSy...' from Google AI Studio.");
-            }
-
             lastError = errMsg;
-            break; // Try next model in loop
+            break; // Try next model in loop without aborting prematurely
           }
 
           const parts = geminiData.candidates?.[0]?.content?.parts || [];
           const textPart = parts.find((p: { text?: string }) => typeof p.text === "string" && p.text.length > 0);
 
           if (!textPart || !textPart.text) {
-            lastError = "Gemini returned an empty text part";
+            lastError = "Gemini returned an empty response";
             break;
           }
 
           const parsed = extractJson(textPart.text);
           return NextResponse.json(parsed);
         } catch (err: any) {
-          if (err.message && err.message.includes("Invalid Gemini API Key")) {
-            throw err;
-          }
           lastError = err.message || "Failed to analyze resume";
         }
       }
+    }
+
+    if (lastError.includes("API key") || lastError.includes("limit: 0") || lastError.includes("quota")) {
+      throw new Error("Quota limit or key restriction on this API key. For full unlimited access, please use a free API Key starting with 'AIzaSy...' from Google AI Studio (https://aistudio.google.com/app/apikey).");
     }
 
     throw new Error(lastError || "High demand on Gemini API. Please try again in a few seconds.");
